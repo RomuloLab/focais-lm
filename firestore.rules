@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function colaboradores() {
+      return ['stefany','romulo','patrick','marcos','bruna','taynara','isabela',
+              'nathanael','gualter','osmo','ana','daniel','carlao'];
+    }
+    function texto(v, max) { return v is string && v.size() <= max; }
+
+    // Respostas semanais (uma por colaborador por semana: 2026-W46__patrick)
+    match /respostas/{id} {
+      allow read: if true;
+      allow create, update: if
+           request.resource.data.keys().hasOnly(['colab','periodo','ano','semana','metas','atividades',
+                                                 'resultados','justificativa','plano','updatedAt','savedBy'])
+        && request.resource.data.colab in colaboradores()
+        && request.resource.data.periodo.matches('^[0-9]{4}-W[0-9]{2}$')
+        && id == request.resource.data.periodo + '__' + request.resource.data.colab
+        && request.resource.data.ano is int
+        && request.resource.data.semana is int
+        && request.resource.data.semana >= 1 && request.resource.data.semana <= 53
+        && request.resource.data.atividades is map
+        && request.resource.data.resultados is map
+        && texto(request.resource.data.justificativa, 5000)
+        && texto(request.resource.data.plano, 5000)
+        && request.resource.data.updatedAt is number;
+      allow delete: if false;      // histórico não pode ser apagado pelo site
+    }
+
+    // Metas (targets) editadas no painel do gestor
+    match /config/{id} {
+      allow read: if true;
+      allow create, update: if id == 'targets' && request.resource.data.size() <= 100;
+      allow delete: if false;
+    }
+
+    // Usuários do painel do gestor (senha guardada com PBKDF2, nunca em texto)
+    match /acessos/{id} {
+      allow read: if true;
+      allow create, update: if
+           id.matches('^[a-z0-9-]{1,40}$')
+        && request.resource.data.keys().hasOnly(['nome','salt','hash','alg','iter','criadoEm','criadoPor'])
+        && texto(request.resource.data.nome, 40)
+        && texto(request.resource.data.hash, 128)
+        && texto(request.resource.data.salt, 64);
+      allow delete: if true;
+    }
+
+    // Todo o resto fica bloqueado
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
