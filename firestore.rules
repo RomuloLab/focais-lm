@@ -28,10 +28,14 @@ service cloud.firestore {
       allow delete: if false;      // histórico não pode ser apagado pelo site
     }
 
-    // Metas (targets) editadas no painel do gestor
+    // Metas (targets) e indicadores novos, editados no painel do gestor
     match /config/{id} {
       allow read: if true;
-      allow create, update: if id == 'targets' && request.resource.data.size() <= 100;
+      allow create, update: if (id == 'targets' && request.resource.data.size() <= 100)
+                            || (id == 'indicadores'
+                                && request.resource.data.keys().hasOnly(['lista'])
+                                && request.resource.data.lista is list
+                                && request.resource.data.lista.size() <= 300);
       allow delete: if false;
     }
 

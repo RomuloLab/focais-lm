@@ -423,13 +423,46 @@ html.theming *,html.theming *:before,html.theming *:after{transition:none!import
   box-shadow:0 2px 8px rgba(0,0,0,.3);view-transition-name:tknob;transition:transform 520ms cubic-bezier(.3,1.35,.5,1)}
 .knob svg.i{width:16px;height:16px;stroke-width:2.4}
 :root[data-theme="dark"] .knob{transform:translateX(32px)}
+
+/* aba indicadores */
+.acc.indtab{grid-template-columns:minmax(320px,420px) 1fr}
+.seg{display:inline-flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:4px}
+.seg button{display:inline-flex;align-items:center;gap:7px;border:0;background:none;border-radius:9px;padding:8px 14px;font-weight:600;color:var(--ink-2);transition:all var(--t) var(--ease)}
+.seg button b{font-family:var(--font-d);font-size:17px}
+.seg button svg.i{width:16px;height:16px}
+.seg button.on{background:var(--ml-yellow);color:var(--ml-navy);box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.ni-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ni-hint{margin:12px 0 0}
+.pick{display:flex;flex-wrap:wrap;gap:6px}
+.pk{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-2);background:var(--surface);border-radius:999px;padding:3px 12px 3px 3px;font-weight:600;font-size:13.5px;transition:all var(--t) var(--ease)}
+.pk img{width:26px;height:26px;border-radius:50%;object-fit:cover}
+.pk:hover{border-color:var(--ink-2)}
+.pk.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.ni .btn.primary{margin-top:4px}
+.xg{padding:12px 0;border-top:1px solid var(--line)}
+.xg:first-of-type{border-top:0}
+.xg .who{margin-bottom:6px}
+.xg .who img{width:30px;height:30px}
+.xr{display:flex;align-items:center;gap:10px;padding:7px 0 7px 41px;flex-wrap:wrap}
+.xn{font-weight:600}
+.xr .tag b{font-family:var(--font-d)}
+.xe{padding:4px 0 8px 41px}
+/* sim / não na tela de preencher */
+.yn{display:inline-flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:3px}
+.yn button{display:inline-flex;align-items:center;gap:6px;border:0;background:none;border-radius:8px;padding:6px 12px;font-weight:600;color:var(--ink-2);transition:all var(--t) var(--ease)}
+.yn button svg.i{width:15px;height:15px}
+.yn button.on{background:var(--ok);color:#fff}
+.yn button.on.no{background:var(--bad)}
+.yn button:disabled{opacity:.5}
+#toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:var(--ink);color:var(--bg);font-weight:600;padding:11px 18px;border-radius:12px;box-shadow:var(--shadow-lg);z-index:200;transition:opacity 200ms var(--ease),transform 260ms var(--ease)}
+#toast.on{opacity:1;transform:translate(-50%,0)}
 @media (max-width:1180px){.conn{font-size:0;gap:0}.brand-t span{display:none}}
 @media (prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
 @media (max-width:860px){.pr-main{grid-template-columns:1fr}.pr-text{grid-template-columns:1fr}}
 @media (max-width:760px){
   .top{padding:10px 14px;gap:10px}.brand-t span{display:none}
   main{padding:16px}.slide{padding:22px}.checks{grid-template-columns:1fr}.tiles{grid-template-columns:1fr 1fr}.dgrid{grid-template-columns:1fr}
-  .acc{grid-template-columns:1fr}.cards{grid-template-columns:1fr}
+  .acc,.acc.indtab{grid-template-columns:1fr}.ni-row{grid-template-columns:1fr}.cards{grid-template-columns:1fr}
   .shead{flex-wrap:wrap}.shead h1{font-size:34px}.nav{margin-left:0;width:100%}.in{width:110px}.stamp{font-size:42px}
 }
 </style>
@@ -498,6 +531,7 @@ const TEAM = [
   atv:['Roteirização AM','Aderência ao DASS','Monitoramento Geral','SPR'],
   kpis:[{id:'dass',nome:'DASS',t:'',dir:'>='},{id:'spr',nome:'SPR (dispersão planejado x realizado)',t:'',dir:'<='}]},
 ];
+TEAM.forEach(p=>p.base=p.kpis);
 
 /* ---------- estado ---------- */
 const S = {
@@ -634,9 +668,13 @@ function setPeriod(p){
 setInterval(()=>{ const n=isoWeek(new Date()), np=perId(n.y,n.w); if(np!==CUR_P){ const was=S.period===CUR_P; CUR=n; CUR_P=np; if(was && !S.dirty) setPeriod(np); else fillPeriodSelects(); } },60000);
 fillPeriodSelects();
 
-function tgt(p,k,r){ if(r===undefined) r=respOf(p.id); if(r&&r.metas&&r.periodo!==CUR_P&&r.metas[k.id]) return r.metas[k.id]; const o = S.targets[p.id+'__'+k.id]; return o && typeof o==='object' ? {t:o.t ?? k.t, dir:o.dir || k.dir} : {t:k.t, dir:k.dir}; }
+function tgt(p,k,r){ if(r===undefined) r=respOf(p.id); if(r&&r.metas&&r.periodo!==CUR_P&&r.metas[k.id]) return r.metas[k.id]; if(k.extra) return {t:k.t||'',dir:k.dir||'>='}; const o = S.targets[p.id+'__'+k.id]; return o && typeof o==='object' ? {t:o.t ?? k.t, dir:o.dir || k.dir} : {t:k.t, dir:k.dir}; }
 function num(v){ if(v==null) return NaN; const s=String(v).replace('%','').replace(/\s/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',','.'); return s===''?NaN:Number(s); }
+const isCk = k => k && k.tipo==='check';
+function metaTxt(t,k){ if(isCk(k)) return 'Sim'; return t&&t.t ? (t.dir==='<='?'≤ ':'≥ ')+t.t : ''; }
+function resTxt(k,v){ if(v==null||String(v).trim()==='') return ''; if(isCk(k)) return v==='sim'?'Sim':'Não'; return String(v); }
 function status(p,k,res,rec){
+  if(isCk(k)){ if(res==null||res==='') return {c:'na',txt:'Pendente'}; return res==='sim'?{c:'ok',txt:'Feito'}:{c:'bad',txt:'Não feito'}; }
   const {t,dir} = tgt(p,k,rec); const v=num(res), tv=num(t);
   if(res==null || String(res).trim()==='') return {c:'na',txt:'Pendente'};
   if(isNaN(tv)) return {c:'warn',txt:'Sem target'};
@@ -728,8 +766,10 @@ function renderSlide(){
       <thead><tr><th>Indicador</th><th>Target</th><th>Resultado</th><th>Status</th></tr></thead>
       <tbody>${p.kpis.map(k=>{ const t=tgt(p,k), st=status(p,k,d.resultados[k.id]);
         return `<tr><td>${esc(k.nome)}</td>
-          <td><span class="target ${t.t?'':'empty'}">${t.t? (t.dir==='<='?'≤ ':'≥ ')+esc(t.t) : 'a definir'}</span></td>
-          <td><input class="in" data-k="${k.id}" placeholder="Resultado" value="${esc(d.resultados[k.id]||'')}" ${ro?'disabled':''}></td>
+          <td><span class="target ${metaTxt(t,k)?'':'empty'}">${metaTxt(t,k)?esc(metaTxt(t,k)):'a definir'}</span></td>
+          <td>${isCk(k)
+            ? `<div class="yn" data-yn="${k.id}"><button type="button" data-v="sim" class="${d.resultados[k.id]==='sim'?'on':''}" ${ro?'disabled':''}>${ic('check')}Sim</button><button type="button" data-v="nao" class="${d.resultados[k.id]==='nao'?'on no':''}" ${ro?'disabled':''}>${ic('x')}Não</button></div>`
+            : `<input class="in" data-k="${k.id}" placeholder="Resultado" value="${esc(d.resultados[k.id]||'')}" ${ro?'disabled':''}>`}</td>
           <td data-st="${k.id}"><span class="pill ${st.c}">${st.txt}</span></td></tr>`;}).join('')}
       </tbody>
     </table>
@@ -751,6 +791,7 @@ function renderSlide(){
   if(ro) return;
   document.querySelectorAll('.check').forEach(el=>el.onclick=e=>{ e.preventDefault(); const j=el.dataset.j; d.atividades[j]=!d.atividades[j]; markDirty(); renderSlide(); });
   document.querySelectorAll('.in[data-k]').forEach(el=>el.oninput=()=>{ d.resultados[el.dataset.k]=el.value; markDirty(); const k=p.kpis.find(x=>x.id===el.dataset.k), st=status(p,k,el.value); document.querySelector(`[data-st="${k.id}"]`).innerHTML=`<span class="pill ${st.c}">${st.txt}</span>`; });
+  document.querySelectorAll('[data-yn] button').forEach(b=>b.onclick=()=>{ const id=b.parentNode.dataset.yn, v=b.dataset.v; d.resultados[id]= d.resultados[id]===v ? '' : v; markDirty(); renderSlide(); });
   $('#just').oninput=e=>{ d.justificativa=e.target.value; markDirty(); };
   $('#plano').oninput=e=>{ d.plano=e.target.value; markDirty(); };
   $('#save').onclick=save;
@@ -817,7 +858,7 @@ function renderPanel(){
       const fora=p.kpis.filter(k=>status(p,k,res[k.id]).c==='bad');
       return `<div class="jitem">
         <div class="jhead"><div class="who"><img src="${PHOTOS[p.id]}" alt=""><div>${esc(p.nome)}<small>${esc(p.turno)} · ${fmtTime(r.updatedAt)}</small></div></div><span class="pill ${o.c}">${o.txt}</span></div>
-        ${fora.length?`<div class="jfora">${fora.map(k=>{const t=tgt(p,k);return `<span>${esc(k.nome)}: <b>${esc(res[k.id])}</b> (meta ${t.dir==='<='?'≤':'≥'} ${esc(t.t)})</span>`;}).join('')}</div>`:''}
+        ${fora.length?`<div class="jfora">${fora.map(k=>{const t=tgt(p,k);return `<span>${esc(k.nome)}: <b>${esc(resTxt(k,res[k.id]))}</b> (meta ${esc(metaTxt(t,k))})</span>`;}).join('')}</div>`:''}
         <div class="dgrid">
           <div class="dbox ${r.justificativa?'':'empty'}"><h4>Justificativa</h4>${r.justificativa?esc(r.justificativa):'Não preenchida'}</div>
           <div class="dbox ${r.plano?'':'empty'}"><h4>Plano de ação</h4>${r.plano?esc(r.plano):'Não preenchido'}</div>
@@ -825,6 +866,8 @@ function renderPanel(){
       : '<p class="pend" style="padding:20px 0">Ninguém escreveu justificativa ou plano de ação neste período.</p>';
   } else if(S.ptab==='hist'){
     body = histHTML();
+  } else if(S.ptab==='ind'){
+    body = indHTML();
   } else if(S.ptab==='acessos'){
     body = acessosHTML();
   } else {
@@ -832,10 +875,10 @@ function renderPanel(){
       <div class="ptools"><span class="pend" id="tmsg">${kNoT?kNoT+' resultado(s) lançado(s) em indicador sem target.':'Edite as metas e clique em salvar.'}</span><span class="spacer"></span><button class="btn primary" id="saveT">Salvar metas</button></div>
       <div class="cards">${TEAM.map(p=>`<div class="card"><div class="card-h"><div class="who"><img src="${PHOTOS[p.id]}" alt=""><div>${esc(p.nome)}<small>${esc(p.turno)}</small></div></div></div>
         <table class="ktab metas"><thead><tr><th>Indicador</th><th>Regra</th><th>Target</th></tr></thead><tbody>
-        ${p.kpis.map(k=>{const t=tgt(p,k);return `<tr><td>${esc(k.nome)}</td>
+        ${p.kpis.filter(k=>!k.extra).map(k=>{const t=tgt(p,k);return `<tr><td>${esc(k.nome)}</td>
           <td><select data-tdir="${p.id}__${k.id}"><option value=">=" ${t.dir!=='<='?'selected':''}>≥ maior melhor</option><option value="<=" ${t.dir==='<='?'selected':''}>≤ menor melhor</option></select></td>
           <td><input class="in" data-tv="${p.id}__${k.id}" value="${esc(t.t)}" placeholder="a definir"></td></tr>`;}).join('')}
-        </tbody></table></div>`).join('')}</div>`;
+        </tbody></table>${p.kpis.some(k=>k.extra)?`<p class="pend" style="margin:8px 4px 0">+ ${p.kpis.filter(k=>k.extra).length} indicador(es) novo(s): edite na aba Indicadores.</p>`:''}</div>`).join('')}</div>`;
   }
 
   $('#viewPanel').innerHTML = `
@@ -851,6 +894,7 @@ function renderPanel(){
       <button class="${S.ptab==='just'?'on':''}" data-pt="just">Justificativas e planos <em>${nJust}</em></button>
       <button class="${S.ptab==='hist'?'on':''}" data-pt="hist">Histórico ${S.year}</button>
       <button class="${S.ptab==='metas'?'on':''}" data-pt="metas">Metas</button>
+      <button class="${S.ptab==='ind'?'on':''}" data-pt="ind">Indicadores</button>
       <button class="${S.ptab==='acessos'?'on':''}" data-pt="acessos">Acessos</button>
     </div>
     <div class="pbody">${body}</div>`;
@@ -861,6 +905,7 @@ function renderPanel(){
   $('#logout').onclick=logout;
   document.querySelectorAll('[data-hp]').forEach(b=>b.onclick=()=>{ S.ptab='resumo'; setPeriod(b.dataset.hp); });
   bindAcessos();
+  bindInd();
   slideAll();
   document.querySelectorAll('[data-pres]').forEach(b=>b.onclick=e=>{e.stopPropagation();openPresent(b.dataset.pres);});
   const pa=$('#presAll'); if(pa) pa.onclick=()=>{ const l=TEAM.filter(passFilter); openPresent((l[0]||TEAM[0]).id); };
@@ -871,7 +916,7 @@ function cardHTML(p){
   return `<div class="card ${o.c}">
     <div class="card-h"><div class="who"><img src="${PHOTOS[p.id]}" alt=""><div>${esc(p.nome)}<small>${r&&r.updatedAt?'Atualizado '+fmtTime(r.updatedAt):'Ainda não preencheu'}</small></div></div><div class="card-hr"><span class="pill ${o.c}">${o.txt}</span><button class="fs" data-pres="${p.id}" title="Apresentar em tela cheia" aria-label="Apresentar ${esc(p.nome)} em tela cheia">${ic('expand')}</button></div></div>
     <table class="ktab"><thead><tr><th>Indicador</th><th>Meta</th><th>Resultado</th></tr></thead><tbody>
-    ${p.kpis.map(k=>{const t=tgt(p,k), s=status(p,k,res[k.id]); return `<tr><td>${esc(k.nome)}</td><td class="m">${t.t?(t.dir==='<='?'≤ ':'≥ ')+esc(t.t):'<i>a definir</i>'}</td><td>${res[k.id]?`<span class="pill ${s.c}">${esc(res[k.id])}</span>`:'<span class="pend">—</span>'}</td></tr>`;}).join('')}
+    ${p.kpis.map(k=>{const t=tgt(p,k), s=status(p,k,res[k.id]); return `<tr><td>${esc(k.nome)}</td><td class="m">${metaTxt(t,k)?esc(metaTxt(t,k)):'<i>a definir</i>'}</td><td>${res[k.id]?`<span class="pill ${s.c}">${esc(resTxt(k,res[k.id]))}</span>`:'<span class="pend">—</span>'}</td></tr>`;}).join('')}
     </tbody></table>
     <div class="card-f"><span class="atv">Atividades <span class="mini"><i style="width:${pct}%"></i></span>${pct}%</span>
       ${hasTxt||r?`<button class="link" data-o="${p.id}">${open?'Ocultar detalhes':'Ver justificativa e plano'}</button>`:''}</div>
@@ -907,7 +952,7 @@ function histHTML(){
       <thead><tr><th class="hn">Colaborador</th><th class="hs">Semanas na meta</th>${weeks.map(w=>{const p=perId(y,w), n=TEAM.filter(x=>filled(x.id,respOf(x.id,p))).length; return `<th class="${p===S.period?'sel':''}"><button data-hp="${p}" title="${weekRange(y,w)}">W${w}</button><small>${n}/${TEAM.length}</small></th>`;}).join('')}</tr></thead>
       <tbody>${TEAM.map(p=>{ let ok=0,f=0;
         const cells=weeks.map(w=>{ const per=perId(y,w), r=respOf(p.id,per), o=overall(p,r); if(o.c!=='na') f++; if(o.c==='ok') ok++;
-          const res=(r&&r.resultados)||{}; const tip=p.kpis.map(k=>{const t=tgt(p,k,r);return k.nome+': '+(res[k.id]||'—')+(t.t?' (meta '+(t.dir==='<='?'≤':'≥')+' '+t.t+')':'');}).join('\n');
+          const res=(r&&r.resultados)||{}; const tip=p.kpis.map(k=>{const t=tgt(p,k,r);return k.nome+': '+(resTxt(k,res[k.id])||'—')+(metaTxt(t,k)?' (meta '+metaTxt(t,k)+')':'');}).join('\n');
           return `<td class="${per===S.period?'sel':''}"><button class="hc ${o.c}" data-hp="${per}" title="W${w} · ${lab[o.c]}\n${esc(tip)}"></button></td>`; }).join('');
         return `<tr><td class="hn"><div class="who"><img src="${PHOTOS[p.id]}" alt="">${esc(p.nome)}</div></td><td class="hs">${f?ok+' de '+f:'—'}</td>${cells}</tr>`; }).join('')}
       </tbody></table></div>`;
@@ -1047,6 +1092,105 @@ function slideAll(){
 }
 window.addEventListener('resize',()=>{ document.querySelectorAll('.ind').forEach(i=>i.style.transition='none'); slideAll(); requestAnimationFrame(()=>document.querySelectorAll('.ind').forEach(i=>i.style.transition='')); });
 try{ document.fonts && document.fonts.ready.then(slideAll); }catch(e){}
+/* ---------- indicadores novos (aba Indicadores) ---------- */
+S.extras=[]; S.ni={nome:'',tipo:'pct',dir:'>=',t:'',sel:{}}; S.xiOpen=null;
+function applyExtras(){
+  TEAM.forEach(p=>{ p.kpis=[...p.base, ...S.extras.filter(x=>x.colab===p.id).map(x=>({id:x.id,nome:x.nome,tipo:x.tipo,t:x.t||'',dir:x.dir||'>=',extra:true}))]; });
+}
+async function saveExtras(lista){ await S.db.doc('config/indicadores').set({lista}); S.extras=lista; applyExtras(); }
+function indHTML(){
+  const n=S.ni, nsel=Object.values(n.sel).filter(Boolean).length;
+  const grupos=TEAM.map(p=>({p,xs:S.extras.filter(x=>x.colab===p.id)})).filter(g=>g.xs.length);
+  return `
+  <div class="acc indtab">
+    <div class="card ni">
+      <h3>Novo indicador</h3>
+      <p class="pend" style="margin:0 0 4px">Ele aparece na tela de preencher dos colaboradores escolhidos a partir de agora.</p>
+      <label class="l" for="niNome">Nome do indicador</label>
+      <input class="lg-in" id="niNome" maxlength="60" placeholder="Ex.: Checklist de doca" value="${esc(n.nome)}">
+      <label class="l">Tipo</label>
+      <div class="seg" role="radiogroup">
+        <button type="button" class="${n.tipo==='pct'?'on':''}" data-tipo="pct" role="radio" aria-checked="${n.tipo==='pct'}"><b>%</b> Percentual</button>
+        <button type="button" class="${n.tipo==='check'?'on':''}" data-tipo="check" role="radio" aria-checked="${n.tipo==='check'}">${ic('check')} Caixa de seleção</button>
+      </div>
+      ${n.tipo==='pct'?`
+        <div class="ni-row">
+          <div><label class="l" for="niDir">Regra</label>
+            <select class="lg-in" id="niDir"><option value=">=" ${n.dir!=='<='?'selected':''}>≥ maior é melhor</option><option value="<=" ${n.dir==='<='?'selected':''}>≤ menor é melhor</option></select></div>
+          <div><label class="l" for="niT">Target</label><input class="lg-in" id="niT" maxlength="12" placeholder="Ex.: 95%" value="${esc(n.t)}"></div>
+        </div>`
+      :`<p class="pend ni-hint">O colaborador marca <b>Sim</b> ou <b>Não</b>. "Sim" conta como dentro da meta.</p>`}
+      <label class="l">Colaboradores <span class="pend">(${nsel} selecionado${nsel===1?'':'s'})</span>
+        <button type="button" class="link" id="niAll" style="margin-left:8px">${nsel===TEAM.length?'Limpar':'Selecionar todos'}</button></label>
+      <div class="pick">${TEAM.map(p=>`<button type="button" class="pk ${n.sel[p.id]?'on':''}" data-pk="${p.id}"><img src="${PHOTOS[p.id]}" alt="">${esc(p.nome)}</button>`).join('')}</div>
+      <div class="lg-err" id="niErr"></div>
+      <button class="btn primary" id="niAdd">${ic('target')}Adicionar indicador</button>
+    </div>
+    <div class="card xi">
+      <h3>Indicadores adicionados <span class="pend">(${S.extras.length})</span></h3>
+      ${grupos.length?grupos.map(g=>`
+        <div class="xg"><div class="who"><img src="${PHOTOS[g.p.id]}" alt="">${esc(g.p.nome)}</div>
+          ${g.xs.map(x=>{ const key=x.id+'@'+x.colab; return `
+          <div class="xr">
+            <span class="xn">${esc(x.nome)}</span>
+            <span class="tag">${x.tipo==='check'?ic('check')+'Caixa de seleção':'<b>%</b> '+(x.t?(x.dir==='<='?'≤ ':'≥ ')+esc(x.t):'sem target')}</span>
+            <span class="spacer"></span>
+            ${x.tipo==='pct'?`<button class="link" data-xe="${key}">Alterar %</button> · `:''}<button class="link danger" data-xd="${key}">Remover</button>
+          </div>
+          ${S.xiOpen===key+'#e'?`<div class="inl xe"><select class="lg-in" data-xedir="${key}" style="width:auto"><option value=">=" ${x.dir!=='<='?'selected':''}>≥ maior é melhor</option><option value="<=" ${x.dir==='<='?'selected':''}>≤ menor é melhor</option></select>
+            <input class="lg-in" data-xet="${key}" maxlength="12" value="${esc(x.t)}" placeholder="Ex.: 95%" style="width:110px"><button class="btn primary" data-xes="${key}">Salvar</button><button class="btn" data-xc="1">Cancelar</button></div>`:''}
+          ${S.xiOpen===key+'#d'?`<div class="inl xe"><span class="pend">Remover "${esc(x.nome)}" de ${esc(g.p.nome)}? Os resultados já salvos ficam no banco, mas o indicador some das telas.</span><button class="btn" style="color:var(--bad)" data-xdc="${key}">Remover</button><button class="btn" data-xc="1">Cancelar</button></div>`:''}`;}).join('')}
+        </div>`).join('')
+      :'<p class="pend">Nenhum indicador novo ainda. Crie um ao lado.</p>'}
+    </div>
+  </div>`;
+}
+function bindInd(){
+  const add=$('#niAdd'); if(!add) return;
+  const n=S.ni;
+  $('#niNome').oninput=e=>n.nome=e.target.value;
+  const nt=$('#niT'); if(nt) nt.oninput=e=>n.t=e.target.value;
+  const nd=$('#niDir'); if(nd) nd.onchange=e=>n.dir=e.target.value;
+  document.querySelectorAll('[data-tipo]').forEach(b=>b.onclick=()=>{ n.tipo=b.dataset.tipo; renderPanel(); });
+  document.querySelectorAll('[data-pk]').forEach(b=>b.onclick=()=>{ n.sel[b.dataset.pk]=!n.sel[b.dataset.pk]; renderPanel(); });
+  $('#niAll').onclick=()=>{ const all=Object.values(n.sel).filter(Boolean).length===TEAM.length; TEAM.forEach(p=>n.sel[p.id]=!all); renderPanel(); };
+  add.onclick=async()=>{
+    const err=$('#niErr'), nome=n.nome.trim(), quem=TEAM.filter(p=>n.sel[p.id]).map(p=>p.id);
+    err.textContent='';
+    if(!nome){ err.textContent='Dê um nome ao indicador.'; return; }
+    if(!quem.length){ err.textContent='Escolha pelo menos um colaborador.'; return; }
+    if(n.tipo==='pct' && n.t.trim() && isNaN(num(n.t))){ err.textContent='O target precisa ser um número, por exemplo 95%.'; return; }
+    const dup=quem.filter(c=>byId(c).kpis.some(k=>k.nome.trim().toLowerCase()===nome.toLowerCase()));
+    if(dup.length){ err.textContent='Já existe "'+nome+'" para: '+dup.map(c=>byId(c).nome).join(', ')+'.'; return; }
+    if(!S.db){ err.textContent='Sem conexão com o banco.'; return; }
+    const id='x'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    const t=n.tipo==='pct'&&n.t.trim()&&!/%$/.test(n.t.trim())?n.t.trim()+'%':n.t.trim();
+    const novos=quem.map(c=>({id,colab:c,nome,tipo:n.tipo,t:n.tipo==='pct'?t:'',dir:n.tipo==='pct'?n.dir:'>=',criadoEm:Date.now()}));
+    add.disabled=true;
+    try{ await saveExtras([...S.extras,...novos]); S.ni={nome:'',tipo:n.tipo,dir:'>=',t:'',sel:{}}; renderPanel(); toast('Indicador "'+nome+'" adicionado para '+quem.length+' colaborador'+(quem.length>1?'es':'')+'.'); }
+    catch(e){ err.textContent='Não foi possível salvar ('+(e&&e.code||'erro')+').'; add.disabled=false; }
+  };
+  const find=key=>{ const [id,c]=key.split('@'); return S.extras.findIndex(x=>x.id===id&&x.colab===c); };
+  document.querySelectorAll('[data-xe]').forEach(b=>b.onclick=()=>{ S.xiOpen=b.dataset.xe+'#e'; renderPanel(); });
+  document.querySelectorAll('[data-xd]').forEach(b=>b.onclick=()=>{ S.xiOpen=b.dataset.xd+'#d'; renderPanel(); });
+  document.querySelectorAll('[data-xc]').forEach(b=>b.onclick=()=>{ S.xiOpen=null; renderPanel(); });
+  document.querySelectorAll('[data-xes]').forEach(b=>b.onclick=async()=>{
+    const key=b.dataset.xes, i=find(key); if(i<0) return;
+    let v=document.querySelector(`[data-xet="${key}"]`).value.trim(); const dir=document.querySelector(`[data-xedir="${key}"]`).value;
+    if(v && isNaN(num(v))){ toast('O target precisa ser um número, por exemplo 95%.'); return; }
+    if(v && !/%$/.test(v)) v+='%';
+    const lista=S.extras.map((x,j)=>j===i?{...x,t:v,dir}:x);
+    try{ await saveExtras(lista); S.xiOpen=null; renderPanel(); toast('Target atualizado.'); }catch(e){ toast('Não foi possível salvar.'); }
+  });
+  document.querySelectorAll('[data-xdc]').forEach(b=>b.onclick=async()=>{
+    const i=find(b.dataset.xdc); if(i<0) return;
+    try{ await saveExtras(S.extras.filter((_,j)=>j!==i)); S.xiOpen=null; renderPanel(); toast('Indicador removido.'); }catch(e){ toast('Não foi possível remover.'); }
+  });
+}
+let toastT=null;
+function toast(msg){ let el=document.getElementById('toast'); if(!el){ el=document.createElement('div'); el.id='toast'; el.setAttribute('role','status'); document.body.appendChild(el); }
+  el.textContent=msg; el.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('on'),2800); }
+
 /* ---------- modo apresentação ---------- */
 function openPresent(id){
   const list = (S.ptab==='resumo' ? TEAM.filter(passFilter) : TEAM).map(p=>p.id);
@@ -1093,8 +1237,8 @@ function renderPresent(){
         <div class="pr-kpis">${p.kpis.map(k=>{const t=tgt(p,k), s=status(p,k,res[k.id]); return `
           <div class="pr-kpi ${s.c}">
             <div class="pr-kpi-n">${esc(k.nome)}</div>
-            <div class="pr-kpi-v">${res[k.id]?esc(res[k.id]):'—'}</div>
-            <div class="pr-kpi-m">Meta ${t.t?(t.dir==='<='?'≤ ':'≥ ')+esc(t.t):'a definir'}<span class="pill ${s.c}">${s.txt}</span></div>
+            <div class="pr-kpi-v">${res[k.id]?esc(resTxt(k,res[k.id])):'—'}</div>
+            <div class="pr-kpi-m">Meta ${metaTxt(t,k)?esc(metaTxt(t,k)):'a definir'}<span class="pill ${s.c}">${s.txt}</span></div>
           </div>`;}).join('')}</div>
         <div class="pr-text">
           <div class="pr-box ${r&&r.justificativa?'':'empty'}"><h4>Justificativa</h4><div>${r&&r.justificativa?esc(r.justificativa):'Não preenchida'}</div></div>
@@ -1137,7 +1281,7 @@ function softRender(){
   // não sobrescreve o que a pessoa está digitando
   if(S.view==='slide' && S.dirty) return;
   if(S.view==='slide') S.draft=null;
-  const a=document.activeElement; if(S.view==='panel' && a && a.matches('.metas input,.metas select,.lg input')) return;
+  const a=document.activeElement; if(S.view==='panel' && a && a.matches('.metas input,.metas select,.lg input,.ni input,.ni select,.xi input,.xi select')) return;
   render();
   if(S.pres!=null) renderPresent();
   if(!$('#wkPop').classList.contains('hidden')) renderWeekPop();
@@ -1157,6 +1301,7 @@ function hideBanner(){ $('#banner').classList.add('hidden'); }
     }
     if(!db){ $('#conn').classList.remove('live'); $('#conn').textContent='Offline'; showBanner(window.__HOSTED__&&!window.__HOSTED__.configured ? 'O banco de dados ainda não foi configurado: falta colar o firebaseConfig no topo do arquivo.' : 'Não foi possível conectar ao banco de dados. Verifique a internet e recarregue a página.'); render(); return; }
     db.collection('acessos').onSnapshot(s=>{ S.users=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')); S.usersLoaded=true; restoreAuth(); softRender(); }, ()=>{ S.usersLoaded=true; softRender(); });
+    db.doc('config/indicadores').onSnapshot(s=>{ S.extras=(s.exists&&Array.isArray((s.data()||{}).lista))?s.data().lista:[]; applyExtras(); softRender(); }, ()=>{});
     S.unsubT = db.doc('config/targets').onSnapshot(s=>{ S.targets = s.exists ? (s.data()||{}) : {}; softRender(); }, ()=>{});
     subscribe(); render();
   }catch(e){ $('#conn').classList.remove('live'); $('#conn').textContent='Offline'; render(); }
