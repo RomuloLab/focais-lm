@@ -14,7 +14,8 @@ service cloud.firestore {
       allow create, update: if
            request.resource.data.keys().hasOnly(['colab','periodo','ano','semana','metas','atividades',
                                                  'resultados','justificativa','plano','updatedAt','savedBy'])
-        && request.resource.data.colab in colaboradores()
+        && (request.resource.data.colab in colaboradores()
+            || request.resource.data.colab.matches('^[a-z0-9-]{1,40}$'))   // colaboradores novos, criados na aba Equipe
         && request.resource.data.periodo.matches('^[0-9]{4}-W[0-9]{2}$')
         && id == request.resource.data.periodo + '__' + request.resource.data.colab
         && request.resource.data.ano is int
@@ -28,14 +29,19 @@ service cloud.firestore {
       allow delete: if false;      // histórico não pode ser apagado pelo site
     }
 
-    // Metas (targets) e indicadores novos, editados no painel do gestor
+    // Metas, indicadores novos e equipe (colaboradores novos / indicadores removidos), editados no painel do gestor
     match /config/{id} {
       allow read: if true;
       allow create, update: if (id == 'targets' && request.resource.data.size() <= 100)
                             || (id == 'indicadores'
                                 && request.resource.data.keys().hasOnly(['lista'])
                                 && request.resource.data.lista is list
-                                && request.resource.data.lista.size() <= 300);
+                                && request.resource.data.lista.size() <= 300)
+                            || (id == 'equipe'
+                                && request.resource.data.keys().hasOnly(['novos','ocultos'])
+                                && request.resource.data.novos is list
+                                && request.resource.data.novos.size() <= 40
+                                && request.resource.data.ocultos is map);
       allow delete: if false;
     }
 
