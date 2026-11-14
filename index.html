@@ -22,7 +22,7 @@ const FIREBASE_CONFIG = {
   appId: "1:841717411780:web:cc5740cb9603ed7833fe91"
 };
 // versão publicada: ao abrir, confere se há uma mais nova no servidor e recarrega (evita ficar preso no cache do navegador)
-const BUILD='1794687272';
+const BUILD='1794688920';
 fetch(location.pathname+'?_='+Date.now(),{cache:'no-store'}).then(r=>r.text()).then(t=>{ const m=/const BUILD='(\d+)'/.exec(t);
   if(m && +m[1]>+BUILD){ const u=new URL(location.href); if(u.searchParams.get('v')!==m[1]){ u.searchParams.set('v',m[1]); location.replace(u.toString()); } } }).catch(()=>{});
 /* ==================================================================== */
@@ -441,6 +441,17 @@ html.theming *,html.theming *:before,html.theming *:after{transition:none!import
 .xn{font-weight:600}
 .xr .tag b{font-family:var(--font-d)}
 .xe{padding:4px 0 8px 41px}
+.at-list{display:flex;flex-direction:column;gap:6px;max-width:760px}
+.at-row{display:flex;align-items:center;gap:6px}
+.at-row .lg-in{flex:1;min-width:0}
+.at-n{width:22px;text-align:right;font-family:var(--font-d);font-weight:700;color:var(--muted)}
+.ib{width:36px;height:36px;flex:none;display:inline-grid;place-items:center;border:1px solid var(--line-2);background:var(--surface);border-radius:10px;color:var(--ink-2)}
+.ib svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.ib:disabled{opacity:.35}
+.ib.danger{color:var(--bad)}
+@media (hover:hover){.ib:not(:disabled):hover{background:var(--surface-2)}}
+.at-add{display:flex;gap:8px;margin-top:10px;max-width:760px}
+.at-add .lg-in{flex:1;min-width:0}
 .ed-box{margin:2px 0 10px 41px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
 .ed-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:4px 12px}
 .ed-grid .ed-nome{grid-column:1/-1}
@@ -628,7 +639,7 @@ const TEAM = [
   atv:['Roteirização AM','Aderência ao DASS','Monitoramento Geral','SPR'],
   kpis:[{id:'dass',nome:'DASS',t:'',dir:'>='},{id:'spr',nome:'SPR (dispersão planejado x realizado)',t:'',dir:'<='}]},
 ];
-TEAM.forEach(p=>p.base=p.kpis);
+TEAM.forEach(p=>{ p.base=p.kpis; p.atv0=p.atv; p.atvIds=p.atv.map((_,i)=>String(i)); });
 const BASE_TEAM=TEAM.slice();
 
 /* ---------- estado ---------- */
@@ -791,7 +802,7 @@ function status(p,k,res,rec){
 
 function respOf(id,per){ return (S.all[per||S.period]||{})[id] || null; }
 function filled(id,r){ if(r===undefined) r=respOf(id); if(!r) return false; const p=byId(id); return p.kpis.some(k => String((r.resultados||{})[k.id]||'').trim()!=='') || !!(r.justificativa||'').trim() || Object.values(r.atividades||{}).some(Boolean); }
-function atvPct(p,r){ if(!r) return 0; const a=r.atividades||{}; return p.atv.length ? Math.round(100*p.atv.filter((_,i)=>a[i]).length/p.atv.length) : 0; }
+function atvPct(p,r){ if(!r) return 0; const a=r.atividades||{}; return p.atv.length ? Math.round(100*p.atvIds.filter(id=>a[id]).length/p.atv.length) : 0; }
 function fmtTime(ts){ if(!ts) return ''; const d=new Date(ts); return pad(d.getDate())+'/'+pad(d.getMonth()+1)+' '+pad(d.getHours())+':'+pad(d.getMinutes()); }
 
 /* ---------- navegação ---------- */
@@ -848,7 +859,7 @@ function getDraft(p){
 function renderSlide(){
   const p = byId(S.cur); if(!p) return;
   const i = TEAM.indexOf(p), d = getDraft(p), r = respOf(p.id);
-  const doneN = p.atv.filter((_,j)=>d.atividades[j]).length, pct=Math.round(100*doneN/p.atv.length);
+  const doneN = p.atvIds.filter(id=>d.atividades[id]).length, pct=p.atv.length?Math.round(100*doneN/p.atv.length):0;
   const ro = S.readonly || !S.canWrite;
   $('#viewSlide').innerHTML = `
   <button class="back" id="back">${ic('back')}Voltar para a lista</button>
@@ -863,8 +874,8 @@ function renderSlide(){
     </div>
 
     <div class="sec ${p.atv.length?'':'hidden'}">Atividades <span class="cnt">${doneN} de ${p.atv.length}</span><span class="bar"><i style="transform:scaleX(${pct/100})"></i></span></div>
-    <div class="checks ${p.atv.length?'':'hidden'}">${p.atv.map((a,j)=>`
-      <label class="check ${d.atividades[j]?'on':''}" data-j="${j}"><input type="checkbox" ${d.atividades[j]?'checked':''} ${ro?'disabled':''}><span class="box"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><span>${esc(a)}</span></label>`).join('')}
+    <div class="checks ${p.atv.length?'':'hidden'}">${p.atv.map((a,j)=>{ const id=p.atvIds[j]; return `
+      <label class="check ${d.atividades[id]?'on':''}" data-j="${id}"><input type="checkbox" ${d.atividades[id]?'checked':''} ${ro?'disabled':''}><span class="box"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><span>${esc(a)}</span></label>`;}).join('')}
     </div>
 
     <div class="sec">Indicadores</div>
@@ -897,7 +908,7 @@ function renderSlide(){
   $('#next').onclick=()=>i<TEAM.length-1&&go(TEAM[i+1].id);
   if(ro) return;
   document.querySelectorAll('.check').forEach(el=>el.onclick=e=>{ e.preventDefault(); const j=el.dataset.j; d.atividades[j]=!d.atividades[j];
-    el.classList.toggle('on',!!d.atividades[j]); const n=p.atv.filter((_,x)=>d.atividades[x]).length;
+    el.classList.toggle('on',!!d.atividades[j]); const n=p.atvIds.filter(x=>d.atividades[x]).length;
     const sec=$('#viewSlide .sec:not(.hidden)'); sec.querySelector('.cnt').textContent=n+' de '+p.atv.length; sec.querySelector('.bar i').style.transform='scaleX('+(n/p.atv.length)+')'; markDirty(); });
   document.querySelectorAll('.in[data-k]').forEach(el=>el.oninput=()=>{ d.resultados[el.dataset.k]=el.value; markDirty(); const k=p.kpis.find(x=>x.id===el.dataset.k), st=status(p,k,el.value); document.querySelector(`[data-st="${k.id}"]`).innerHTML=`<span class="pill ${st.c}">${st.txt}</span>`; });
   document.querySelectorAll('[data-yn] button').forEach(b=>b.onclick=()=>{ const g=b.parentNode, id=g.dataset.yn, v=b.dataset.v; d.resultados[id]= d.resultados[id]===v ? '' : v;
@@ -978,7 +989,7 @@ function renderPanel(){
   } else if(S.ptab==='hist'){
     body = histHTML();
   } else if(S.ptab==='ind'){
-    body = indHTML().replace(/<\/div>\s*$/, baseKpisHTML()+'</div>');
+    body = indHTML().replace(/<\/div>\s*$/, baseKpisHTML()+atvHTML()+'</div>');
   } else if(S.ptab==='equipe'){
     body = equipeHTML();
   } else if(S.ptab==='acessos'){
@@ -1039,7 +1050,7 @@ function cardHTML(p){
     ${open?`<div class="card-d">
       <div class="dbox ${r&&r.justificativa?'':'empty'}"><h4>Justificativa</h4>${r&&r.justificativa?esc(r.justificativa):'Não preenchida'}</div>
       <div class="dbox ${r&&r.plano?'':'empty'}"><h4>Plano de ação</h4>${r&&r.plano?esc(r.plano):'Não preenchido'}</div>
-      <div class="dbox ${p.atv.length?'':'hidden'}"><h4>Atividades não marcadas</h4>${esc(p.atv.filter((_,j)=>!(r&&r.atividades||{})[j]).join(' · ')||'Todas concluídas')}</div>
+      <div class="dbox ${p.atv.length?'':'hidden'}"><h4>Atividades não marcadas</h4>${esc(p.atv.filter((_,j)=>!(r&&r.atividades||{})[p.atvIds[j]]).join(' · ')||'Todas concluídas')}</div>
     </div>`:''}
   </div>`;
 }
@@ -1327,7 +1338,55 @@ function bindBaseKpis(){
 }
 
 /* ---------- indicadores novos (aba Indicadores) ---------- */
-S.edits={}; S.ed=null;
+S.edits={}; S.ed=null; S.atvEd={}; S.at={colab:null,dr:{}};
+/* ---------- atividades do check-list (caixas de seleção da tela de preencher) ---------- */
+function atvDraft(c){ const p=byId(c); if(!S.at.dr[c]) S.at.dr[c]=p.atv.map((n,i)=>({id:p.atvIds[i],nome:n})); return S.at.dr[c]; }
+function atvHTML(){
+  if(!TEAM.length) return '';
+  if(!S.at.colab||!byId(S.at.colab)) S.at.colab=TEAM[0].id;
+  const c=S.at.colab, p=byId(c), L=atvDraft(c), mud=JSON.stringify(L)!==JSON.stringify(p.atv.map((n,i)=>({id:p.atvIds[i],nome:n})));
+  return `<div class="card xi" style="grid-column:1/-1">
+    <h3>Atividades do check-list</h3>
+    <p class="pend" style="margin:0 0 8px">São as caixas de seleção da tela de preencher. Escolha o colaborador, edite os textos, mude a ordem, remova ou adicione. As marcações já feitas continuam ligadas à atividade mesmo se você renomear ou mudar a ordem.</p>
+    <div class="pick" style="margin-bottom:12px">${TEAM.map(q=>`<button type="button" class="pk ${q.id===c?'on':''}" data-atc="${q.id}"><img src="${PHOTOS[q.id]}" alt="">${esc(q.nome)}${S.atvEd[q.id]?' ·':''}</button>`).join('')}</div>
+    <div class="at-list">${L.length?L.map((a,i)=>`
+      <div class="at-row"><span class="at-n">${i+1}</span>
+        <input class="lg-in" data-atn="${i}" maxlength="80" value="${esc(a.nome)}" aria-label="Atividade ${i+1}">
+        <button class="ib" data-atu="${i}" ${i?'':'disabled'} title="Subir" aria-label="Subir"><svg viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6"/></svg></button>
+        <button class="ib" data-atd="${i}" ${i<L.length-1?'':'disabled'} title="Descer" aria-label="Descer"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+        <button class="ib danger" data-atx="${i}" title="Remover" aria-label="Remover"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div>`).join(''):'<p class="pend">Nenhuma atividade. Adicione abaixo.</p>'}</div>
+    <div class="at-add"><input class="lg-in" id="atNova" maxlength="80" placeholder="Nova atividade, ex.: Farol de expedição"><button class="btn" id="atAdd">Adicionar</button></div>
+    <div class="lg-err" id="atErr"></div>
+    <div class="inl" style="margin-top:6px"><button class="btn primary" id="atSave">Salvar atividades de ${esc(p.nome)}</button>
+      ${mud?'<button class="btn" id="atUndo">Descartar alterações</button>':''}
+      ${S.atvEd[c]&&p.atv0.length?'<button class="link" id="atReset">Voltar à lista original</button>':''}
+      ${mud?'<span class="pend">Alterações não salvas</span>':''}</div>
+  </div>`;
+}
+function bindAtv(){
+  const sv=$('#atSave'); if(!sv) return; const c=S.at.colab, L=atvDraft(c), p=byId(c);
+  document.querySelectorAll('[data-atc]').forEach(b=>b.onclick=()=>{ S.at.colab=b.dataset.atc; renderPanel(); });
+  document.querySelectorAll('[data-atn]').forEach(f=>{ f.oninput=()=>{ L[+f.dataset.atn].nome=f.value; }; f.onchange=()=>renderPanel(); });
+  const mv=(i,j)=>{ const t=L[i]; L[i]=L[j]; L[j]=t; renderPanel(); };
+  document.querySelectorAll('[data-atu]').forEach(b=>b.onclick=()=>mv(+b.dataset.atu,+b.dataset.atu-1));
+  document.querySelectorAll('[data-atd]').forEach(b=>b.onclick=()=>mv(+b.dataset.atd,+b.dataset.atd+1));
+  document.querySelectorAll('[data-atx]').forEach(b=>b.onclick=()=>{ L.splice(+b.dataset.atx,1); renderPanel(); });
+  const add=()=>{ const v=$('#atNova').value.trim(); if(!v){ $('#atErr').textContent='Escreva o nome da atividade.'; return; }
+    if(L.length>=40){ $('#atErr').textContent='Máximo de 40 atividades por colaborador.'; return; }
+    L.push({id:'a'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),nome:v}); renderPanel(); const n=$('#atNova'); if(n) n.focus(); };
+  $('#atAdd').onclick=add; $('#atNova').onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); add(); } };
+  const u=$('#atUndo'); if(u) u.onclick=()=>{ delete S.at.dr[c]; renderPanel(); };
+  const save=async(lista)=>{ if(!S.db){ $('#atErr').textContent='Sem conexão com o banco.'; return; }
+    sv.disabled=true; const ed={...S.atvEd}; if(lista) ed[c]=lista; else delete ed[c];
+    try{ await saveExtras(S.extras,S.edits,ed); delete S.at.dr[c]; renderPanel(); toast(lista?'Atividades de '+p.nome+' salvas.':'Lista original de '+p.nome+' restaurada.'); }
+    catch(x){ sv.disabled=false; $('#atErr').textContent='Não foi possível salvar ('+(x&&x.code||'erro')+').'; } };
+  sv.onclick=()=>{ const lista=L.map(a=>({id:String(a.id),nome:a.nome.trim()}));
+    if(lista.some(a=>!a.nome)){ $('#atErr').textContent='Há atividade sem nome. Preencha ou remova.'; return; }
+    const orig=p.atv0.map((n,i)=>({id:String(i),nome:n}));
+    save(p.atv0.length && JSON.stringify(lista)===JSON.stringify(orig) ? null : lista); };
+  const rs=$('#atReset'); if(rs) rs.onclick=()=>save(null);
+}
 function baseEd(p,k){ const e=S.edits[p.id+'__'+k.id]; return e?{...k,nome:e.nome||k.nome,tipo:e.tipo||k.tipo,editado:true}:k; }
 function edForm(){ const e=S.ed; return `<div class="ed-box">
   <div class="ed-grid">
@@ -1382,15 +1441,16 @@ function paiOpts(){ const sel=TEAM.filter(p=>S.ni.sel[p.id]), src=sel.length?sel
 function applyExtras(){
   const rm=S.equipe.removidos||{};
   TEAM.length=0; BASE_TEAM.forEach(p=>{ if(!rm[p.id]) TEAM.push(p); });
-  (S.equipe.novos||[]).forEach(n=>{ if(!n||!n.id||TEAM.some(p=>p.id===n.id)) return; PHOTOS[n.id]=photoURL(n); TEAM.push({id:n.id,nome:n.nome,turno:n.turno,atv:[],base:[],kpis:[],novo:true}); });
+  (S.equipe.novos||[]).forEach(n=>{ if(!n||!n.id||TEAM.some(p=>p.id===n.id)) return; PHOTOS[n.id]=photoURL(n); TEAM.push({id:n.id,nome:n.nome,turno:n.turno,atv:[],atv0:[],atvIds:[],base:[],kpis:[],novo:true}); });
   if(S.view==='slide' && S.cur && !byId(S.cur)){ S.cur=null; go('inicio'); }
+  TEAM.forEach(p=>{ const L=Array.isArray(S.atvEd[p.id])?S.atvEd[p.id]:p.atv0.map((n,i)=>({id:String(i),nome:n})); p.atv=L.map(a=>a.nome); p.atvIds=L.map(a=>String(a.id)); });
   const oc=S.equipe.ocultos||{};
   TEAM.forEach(p=>{ const all=[...p.base.filter(k=>!oc[p.id+'__'+k.id]).map(k=>baseEd(p,k)), ...S.extras.filter(x=>x.colab===p.id).map(x=>({id:x.id,nome:x.nome,tipo:x.tipo,t:x.t||'',dir:x.dir||'>=',extra:true,pai:x.pai||''}))];
     // indicador secundário só aparece se o principal dele estiver na tela, e vem logo abaixo dele
     const mains=all.filter(k=>!k.pai); p.kpis=[];
     mains.forEach(m=>{ p.kpis.push(m); all.filter(s=>s.pai===m.id).forEach(s=>{ s.paiNome=m.nome; p.kpis.push(s); }); }); });
 }
-async function saveExtras(lista,edits){ edits=edits||S.edits; await S.db.doc('config/indicadores').set({lista,editados:edits}); S.extras=lista; S.edits=edits; applyExtras(); }
+async function saveExtras(lista,edits,atvEd){ edits=edits||S.edits; atvEd=atvEd||S.atvEd; await S.db.doc('config/indicadores').set({lista,editados:edits,atividades:atvEd}); S.extras=lista; S.edits=edits; S.atvEd=atvEd; applyExtras(); }
 function indHTML(){
   const n=S.ni, nsel=Object.values(n.sel).filter(Boolean).length;
   const grupos=TEAM.map(p=>({p,xs:S.extras.filter(x=>x.colab===p.id)})).filter(g=>g.xs.length);
@@ -1442,7 +1502,7 @@ function indHTML(){
   </div>`;
 }
 function bindInd(){
-  bindEd();
+  bindEd(); bindAtv();
   const add=$('#niAdd'); if(!add) return;
   const n=S.ni;
   $('#niNome').oninput=e=>n.nome=e.target.value;
@@ -1540,7 +1600,7 @@ function renderPresent(){
           <div class="pr-box ${r&&r.plano?'':'empty'}"><h4>Plano de ação</h4><div>${r&&r.plano?esc(r.plano):'Não preenchido'}</div></div>
         </div>
         <div class="pr-box ${p.atv.length?'':'hidden'}"><h4>Atividades</h4>
-          <div class="pr-checks">${p.atv.map((t,j)=>`<div class="pr-ck ${a[j]?'on':''}"><span>${a[j]?'<svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>':'<svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>'}</span>${esc(t)}</div>`).join('')}</div>
+          <div class="pr-checks">${p.atv.map((t,j)=>`<div class="pr-ck ${a[p.atvIds[j]]?'on':''}"><span>${a[p.atvIds[j]]?'<svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>':'<svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>'}</span>${esc(t)}</div>`).join('')}</div>
         </div>
       </section>
     </div>
@@ -1600,7 +1660,7 @@ function hideBanner(){ $('#banner').classList.add('hidden'); }
     if(!db){ $('#conn').classList.remove('live'); $('#conn').textContent='Offline'; showBanner(window.__HOSTED__&&!window.__HOSTED__.configured ? 'O banco de dados ainda não foi configurado: falta colar o firebaseConfig no topo do arquivo.' : 'Não foi possível conectar ao banco de dados. Verifique a internet e recarregue a página.'); render(); return; }
     db.collection('acessos').onSnapshot(s=>{ S.users=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')); S.usersLoaded=true; restoreAuth(); softRender(); }, ()=>{ S.usersLoaded=true; softRender(); });
     db.doc('config/equipe').onSnapshot(s=>{ const d=s.exists?(s.data()||{}):{}; S.equipe={novos:Array.isArray(d.novos)?d.novos:[],ocultos:(d.ocultos&&typeof d.ocultos==='object')?d.ocultos:{},removidos:(d.removidos&&typeof d.removidos==='object')?d.removidos:{}}; applyExtras(); softRender(); }, ()=>{});
-    db.doc('config/indicadores').onSnapshot(s=>{ const d=s.exists?(s.data()||{}):{}; S.extras=Array.isArray(d.lista)?d.lista:[]; S.edits=(d.editados&&typeof d.editados==='object')?d.editados:{}; applyExtras(); softRender(); }, ()=>{});
+    db.doc('config/indicadores').onSnapshot(s=>{ const d=s.exists?(s.data()||{}):{}; S.extras=Array.isArray(d.lista)?d.lista:[]; S.edits=(d.editados&&typeof d.editados==='object')?d.editados:{}; S.atvEd=(d.atividades&&typeof d.atividades==='object')?d.atividades:{}; applyExtras(); softRender(); }, ()=>{});
     S.unsubT = db.doc('config/targets').onSnapshot(s=>{ S.targets = s.exists ? (s.data()||{}) : {}; softRender(); }, ()=>{});
     subscribe(); render();
   }catch(e){ $('#conn').classList.remove('live'); $('#conn').textContent='Offline'; render(); }
