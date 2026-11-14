@@ -611,7 +611,7 @@ const TEAM = [
   kpis:[{id:'dass',nome:'DASS',t:'',dir:'>='},{id:'spr',nome:'SPR (dispersão planejado x realizado)',t:'',dir:'<='}]},
 ];
 TEAM.forEach(p=>p.base=p.kpis);
-const BASE_N=TEAM.length;
+const BASE_TEAM=TEAM.slice();
 
 /* ---------- estado ---------- */
 const S = {
@@ -1192,12 +1192,12 @@ function slideAll(){
 let rzQ=false; window.addEventListener('resize',()=>{ if(rzQ) return; rzQ=true; requestAnimationFrame(()=>{ rzQ=false; document.querySelectorAll('.ind').forEach(i=>i.style.transition='none'); slideAll(); requestAnimationFrame(()=>document.querySelectorAll('.ind').forEach(i=>i.style.transition='')); }); },{passive:true});
 try{ document.fonts && document.fonts.ready.then(slideAll); }catch(e){}
 /* ---------- equipe: novos colaboradores e indicadores originais removidos ---------- */
-S.equipe={novos:[],ocultos:{}}; S.nc={nome:'',ini:'',fim:'',foto:''}; S.eqOpen=null;
+S.equipe={novos:[],ocultos:{},removidos:{}}; S.nc={nome:'',ini:'',fim:'',foto:''}; S.eqOpen=null;
 const photoCache={};
 function photoURL(n){ const c=photoCache[n.id]; if(c&&c.src===n.foto) return c.url; let url=n.foto;
   try{ const s=n.foto,i=s.indexOf(','),bin=atob(s.slice(i+1)),u=new Uint8Array(bin.length); for(let j=0;j<bin.length;j++) u[j]=bin.charCodeAt(j); url=URL.createObjectURL(new Blob([u],{type:'image/jpeg'})); }catch(e){}
   photoCache[n.id]={src:n.foto,url}; return url; }
-async function saveEquipe(eq){ await S.db.doc('config/equipe').set({novos:eq.novos,ocultos:eq.ocultos}); S.equipe=eq; applyExtras(); }
+async function saveEquipe(eq){ eq={novos:eq.novos,ocultos:eq.ocultos,removidos:eq.removidos||S.equipe.removidos||{}}; await S.db.doc('config/equipe').set(eq); S.equipe=eq; applyExtras(); }
 // reduz a foto para 200x200 (corte central) antes de salvar
 function fotoPequena(file){ return new Promise((ok,err)=>{ const fr=new FileReader(); fr.onerror=()=>err(new Error('leitura'));
   fr.onload=()=>{ const im=new Image(); im.onerror=()=>err(new Error('imagem'));
@@ -1235,7 +1235,17 @@ function equipeHTML(){
           ${S.eqOpen===c.id?`<div class="inl xe" style="padding-left:0"><span class="pend">Remover ${esc(c.nome)}? Ele some das telas; as respostas já salvas ficam guardadas no banco.</span><button class="btn" style="color:var(--bad)" data-cdc="${esc(c.id)}">Remover</button><button class="btn" data-cc="1">Cancelar</button></div>`:''}
         </div>`).join('')
       :'<p class="pend">Nenhum colaborador novo ainda. Cadastre um ao lado.</p>'}
-      <p class="pend" style="margin-top:14px">Equipe original: ${TEAM.filter(p=>!p.novo).map(p=>esc(p.nome)).join(', ')}.</p>
+    </div>
+    <div class="card xi" style="grid-column:1/-1">
+      <h3>Equipe original <span class="pend">(${Object.keys(S.equipe.removidos).length} retirado${Object.keys(S.equipe.removidos).length===1?'':'s'})</span></h3>
+      <p class="pend" style="margin:0 0 6px">Retire uma pessoa para ela sumir da lista de preencher, do painel, do histórico e da apresentação. Dá para restaurar quando quiser; as respostas já salvas continuam guardadas.</p>
+      <div class="bk-grid">${BASE_TEAM.map(p=>{ const off=!!S.equipe.removidos[p.id]; return `
+        <div class="xg"><div class="xr ${off?'off':''}" style="padding-left:0">
+          <div class="who"><img src="${PHOTOS[p.id]}" alt="" style="${off?'filter:grayscale(1);opacity:.6':''}"><div><span class="xn">${esc(p.nome)}</span><small>${esc(p.turno)}</small></div></div>
+          ${off?'<span class="pill na plain">Retirado</span>':''}<span class="spacer"></span>
+          <button class="link ${off?'':'danger'}" data-${off?'br':'bd'}="${p.id}">${off?'Restaurar':'Retirar'}</button></div>
+          ${S.eqOpen==='b:'+p.id?`<div class="inl xe" style="padding-left:0"><span class="pend">Retirar ${esc(p.nome)} da equipe?</span><button class="btn" style="color:var(--bad)" data-bdc="${p.id}">Retirar</button><button class="btn" data-cc="1">Cancelar</button></div>`:''}
+        </div>`;}).join('')}</div>
     </div>
   </div>`;
 }
@@ -1260,6 +1270,13 @@ function bindEquipe(){
     catch(e){ err.textContent='Não foi possível salvar ('+(e&&e.code||'erro')+').'; add.disabled=false; }
   };
   document.querySelectorAll('[data-cd]').forEach(b=>b.onclick=()=>{ S.eqOpen=b.dataset.cd; renderPanel(); });
+  const setRm=async(id,on)=>{ const rm={...S.equipe.removidos}; if(on) rm[id]=true; else delete rm[id];
+    if(!S.db){ toast('Sem conexão com o banco.'); return; }
+    if(on && TEAM.length<=1){ toast('A equipe precisa ter pelo menos uma pessoa.'); return; }
+    try{ await saveEquipe({novos:S.equipe.novos,ocultos:S.equipe.ocultos,removidos:rm}); S.eqOpen=null; renderPanel(); toast(on?'Pessoa retirada da equipe.':'Pessoa restaurada.'); }catch(e){ toast('Não foi possível salvar.'); } };
+  document.querySelectorAll('[data-bd]').forEach(b=>b.onclick=()=>{ S.eqOpen='b:'+b.dataset.bd; renderPanel(); });
+  document.querySelectorAll('[data-bdc]').forEach(b=>b.onclick=()=>setRm(b.dataset.bdc,true));
+  document.querySelectorAll('[data-br]').forEach(b=>b.onclick=()=>setRm(b.dataset.br,false));
   document.querySelectorAll('[data-cc]').forEach(b=>b.onclick=()=>{ S.eqOpen=null; renderPanel(); });
   document.querySelectorAll('[data-cdc]').forEach(b=>b.onclick=async()=>{ const id=b.dataset.cdc;
     try{ await saveEquipe({novos:S.equipe.novos.filter(c=>c.id!==id),ocultos:S.equipe.ocultos});
@@ -1291,7 +1308,8 @@ function bindBaseKpis(){
 /* ---------- indicadores novos (aba Indicadores) ---------- */
 S.extras=[]; S.ni={nome:'',tipo:'pct',dir:'>=',t:'',sel:{}}; S.xiOpen=null;
 function applyExtras(){
-  TEAM.length=BASE_N;
+  const rm=S.equipe.removidos||{};
+  TEAM.length=0; BASE_TEAM.forEach(p=>{ if(!rm[p.id]) TEAM.push(p); });
   (S.equipe.novos||[]).forEach(n=>{ if(!n||!n.id||TEAM.some(p=>p.id===n.id)) return; PHOTOS[n.id]=photoURL(n); TEAM.push({id:n.id,nome:n.nome,turno:n.turno,atv:[],base:[],kpis:[],novo:true}); });
   if(S.view==='slide' && S.cur && !byId(S.cur)){ S.cur=null; go('inicio'); }
   const oc=S.equipe.ocultos||{};
@@ -1481,7 +1499,7 @@ function softRender(){
   // não sobrescreve o que a pessoa está digitando
   if(S.view==='slide' && S.dirty) return;
   const a=document.activeElement; if(S.view==='panel' && a && a.matches('.metas input,.metas select,.lg input,.ni input,.ni select,.xi input,.xi select,.nc input')) return;
-  const sig=S.view+'|'+S.period+'|'+JSON.stringify(S.all[S.period]||0)+JSON.stringify(S.targets)+S.extras.length+JSON.stringify(S.extras)+S.users.length+JSON.stringify(S.equipe.ocultos)+S.equipe.novos.map(n=>n.id+n.nome+n.turno+(n.foto||'').length).join()+(S.ptab==='hist'?JSON.stringify(Object.keys(S.all)):'');
+  const sig=S.view+'|'+S.period+'|'+JSON.stringify(S.all[S.period]||0)+JSON.stringify(S.targets)+S.extras.length+JSON.stringify(S.extras)+S.users.length+JSON.stringify(S.equipe.ocultos)+JSON.stringify(S.equipe.removidos)+S.equipe.novos.map(n=>n.id+n.nome+n.turno+(n.foto||'').length).join()+(S.ptab==='hist'?JSON.stringify(Object.keys(S.all)):'');
   if(sig===S.lastSig && S.pres==null) return;
   S.lastSig=sig;
   if(S.view==='slide') S.draft=null;   // só descarta o rascunho quando a tela vai ser redesenhada com dados novos
@@ -1504,7 +1522,7 @@ function hideBanner(){ $('#banner').classList.add('hidden'); }
     }
     if(!db){ $('#conn').classList.remove('live'); $('#conn').textContent='Offline'; showBanner(window.__HOSTED__&&!window.__HOSTED__.configured ? 'O banco de dados ainda não foi configurado: falta colar o firebaseConfig no topo do arquivo.' : 'Não foi possível conectar ao banco de dados. Verifique a internet e recarregue a página.'); render(); return; }
     db.collection('acessos').onSnapshot(s=>{ S.users=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')); S.usersLoaded=true; restoreAuth(); softRender(); }, ()=>{ S.usersLoaded=true; softRender(); });
-    db.doc('config/equipe').onSnapshot(s=>{ const d=s.exists?(s.data()||{}):{}; S.equipe={novos:Array.isArray(d.novos)?d.novos:[],ocultos:(d.ocultos&&typeof d.ocultos==='object')?d.ocultos:{}}; applyExtras(); softRender(); }, ()=>{});
+    db.doc('config/equipe').onSnapshot(s=>{ const d=s.exists?(s.data()||{}):{}; S.equipe={novos:Array.isArray(d.novos)?d.novos:[],ocultos:(d.ocultos&&typeof d.ocultos==='object')?d.ocultos:{},removidos:(d.removidos&&typeof d.removidos==='object')?d.removidos:{}}; applyExtras(); softRender(); }, ()=>{});
     db.doc('config/indicadores').onSnapshot(s=>{ S.extras=(s.exists&&Array.isArray((s.data()||{}).lista))?s.data().lista:[]; applyExtras(); softRender(); }, ()=>{});
     S.unsubT = db.doc('config/targets').onSnapshot(s=>{ S.targets = s.exists ? (s.data()||{}) : {}; softRender(); }, ()=>{});
     subscribe(); render();

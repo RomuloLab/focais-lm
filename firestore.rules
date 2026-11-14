@@ -38,10 +38,11 @@ service cloud.firestore {
                                 && request.resource.data.lista is list
                                 && request.resource.data.lista.size() <= 300)
                             || (id == 'equipe'
-                                && request.resource.data.keys().hasOnly(['novos','ocultos'])
+                                && request.resource.data.keys().hasOnly(['novos','ocultos','removidos'])
                                 && request.resource.data.novos is list
                                 && request.resource.data.novos.size() <= 40
-                                && request.resource.data.ocultos is map);
+                                && request.resource.data.ocultos is map
+                                && request.resource.data.get('removidos', {}) is map);
       allow delete: if false;
     }
 
