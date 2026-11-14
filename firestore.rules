@@ -34,9 +34,11 @@ service cloud.firestore {
       allow read: if true;
       allow create, update: if (id == 'targets' && request.resource.data.size() <= 100)
                             || (id == 'indicadores'
-                                && request.resource.data.keys().hasOnly(['lista'])
+                                && request.resource.data.keys().hasOnly(['lista','editados'])
                                 && request.resource.data.lista is list
-                                && request.resource.data.lista.size() <= 300)
+                                && request.resource.data.lista.size() <= 300
+                                && request.resource.data.get('editados', {}) is map
+                                && request.resource.data.get('editados', {}).size() <= 300)
                             || (id == 'equipe'
                                 && request.resource.data.keys().hasOnly(['novos','ocultos','removidos'])
                                 && request.resource.data.novos is list

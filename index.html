@@ -22,7 +22,7 @@ const FIREBASE_CONFIG = {
   appId: "1:841717411780:web:cc5740cb9603ed7833fe91"
 };
 // versão publicada: ao abrir, confere se há uma mais nova no servidor e recarrega (evita ficar preso no cache do navegador)
-const BUILD='1794676857';
+const BUILD='1794687272';
 fetch(location.pathname+'?_='+Date.now(),{cache:'no-store'}).then(r=>r.text()).then(t=>{ const m=/const BUILD='(\d+)'/.exec(t);
   if(m && +m[1]>+BUILD){ const u=new URL(location.href); if(u.searchParams.get('v')!==m[1]){ u.searchParams.set('v',m[1]); location.replace(u.toString()); } } }).catch(()=>{});
 /* ==================================================================== */
@@ -441,6 +441,12 @@ html.theming *,html.theming *:before,html.theming *:after{transition:none!import
 .xn{font-weight:600}
 .xr .tag b{font-family:var(--font-d)}
 .xe{padding:4px 0 8px 41px}
+.ed-box{margin:2px 0 10px 41px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
+.ed-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:4px 12px}
+.ed-grid .ed-nome{grid-column:1/-1}
+.ed-box .lg-in{width:100%}
+.ed-box .inl{margin-top:8px}
+@media (max-width:520px){.ed-box{margin-left:0}}
 /* sim / não na tela de preencher */
 .yn{display:inline-flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:3px}
 .yn button{display:inline-flex;align-items:center;gap:6px;border:0;background:none;border-radius:8px;padding:6px 12px;font-weight:600;color:var(--ink-2);transition:background-color var(--t) var(--ease),color var(--t) var(--ease),border-color var(--t) var(--ease),box-shadow var(--t) var(--ease)}
@@ -1305,9 +1311,10 @@ function baseKpisHTML(){
     <p class="pend" style="margin:0 0 6px">Remova um indicador original para ele sumir da tela de preencher, do painel e da apresentação. Dá para restaurar quando quiser; os resultados já salvos continuam guardados.</p>
     <div class="bk-grid">${TEAM.filter(p=>p.base.length).map(p=>`
       <div class="xg"><div class="who"><img src="${PHOTOS[p.id]}" alt="">${esc(p.nome)}</div>
-        ${p.base.map(k=>{ const key=p.id+'__'+k.id, off=!!oc[key]; return `
-        <div class="xr ${off?'off':''}"><span class="xn">${esc(k.nome)}</span>${off?'<span class="pill na plain">Removido</span>':''}<span class="spacer"></span>
-          <button class="link ${off?'':'danger'}" data-bk="${key}">${off?'Restaurar':'Remover'}</button></div>`;}).join('')}
+        ${p.base.map(k=>{ const key=p.id+'__'+k.id, off=!!oc[key], m=baseEd(p,k), ed=S.edits[key]; return `
+        <div class="xr ${off?'off':''}"><span class="xn">${esc(m.nome)}</span>${off?'<span class="pill na plain">Removido</span>':`<span class="tag">${isCk(m)?ic('check')+'Caixa de seleção':'<b>%</b> '+esc(metaTxt(tgt(p,m,null),m)||'sem target')}</span>`}${ed?'<span class="tag">editado</span>':''}<span class="spacer"></span>
+          ${off?'':`<button class="link" data-edo="b:${key}">Editar</button> · `}<button class="link ${off?'':'danger'}" data-bk="${key}">${off?'Restaurar':'Remover'}</button></div>
+        ${S.ed&&S.ed.key==='b:'+key?edForm():''}`;}).join('')}
       </div>`).join('')}</div>
   </div>`;
 }
@@ -1320,6 +1327,56 @@ function bindBaseKpis(){
 }
 
 /* ---------- indicadores novos (aba Indicadores) ---------- */
+S.edits={}; S.ed=null;
+function baseEd(p,k){ const e=S.edits[p.id+'__'+k.id]; return e?{...k,nome:e.nome||k.nome,tipo:e.tipo||k.tipo,editado:true}:k; }
+function edForm(){ const e=S.ed; return `<div class="ed-box">
+  <div class="ed-grid">
+    <div class="ed-nome"><label class="l" for="edNome">Nome</label><input class="lg-in" id="edNome" data-ed="nome" maxlength="60" value="${esc(e.nome)}"></div>
+    <div><label class="l" for="edTipo">Tipo</label><select class="lg-in" id="edTipo" data-ed="tipo"><option value="pct" ${e.tipo!=='check'?'selected':''}>% Percentual</option><option value="check" ${e.tipo==='check'?'selected':''}>Caixa de seleção</option></select></div>
+    ${e.tipo!=='check'?`<div><label class="l" for="edDir">Regra</label><select class="lg-in" id="edDir" data-ed="dir"><option value=">=" ${e.dir!=='<='?'selected':''}>≥ maior é melhor</option><option value="<=" ${e.dir==='<='?'selected':''}>≤ menor é melhor</option></select></div>
+    <div><label class="l" for="edT">Target</label><input class="lg-in" id="edT" data-ed="t" maxlength="12" placeholder="Ex.: 95%" value="${esc(e.t)}"></div>`:''}
+    ${e.kind==='x'?(e.temSubs?`<div class="ed-nome"><p class="pend ni-hint">Este indicador tem secundários ligados a ele, então continua como principal.</p></div>`
+      :`<div class="ed-nome"><label class="l" for="edPai">Ligado a</label><select class="lg-in" id="edPai" data-ed="pai"><option value="">Nenhum: é um indicador principal</option>${e.mains.map(m=>`<option value="${m.id}" ${e.pai===m.id?'selected':''}>Secundário de: ${esc(m.nome)}</option>`).join('')}</select></div>`):''}
+  </div>
+  ${e.kind==='b'?'<p class="pend ni-hint" style="margin:6px 0 0">A alteração vale a partir desta semana. Semanas anteriores mantêm a meta com que foram preenchidas.</p>':''}
+  <div class="lg-err" id="edErr"></div>
+  <div class="inl"><button class="btn primary" id="edSave">Salvar alterações</button><button class="btn" id="edCancel">Cancelar</button></div>
+</div>`; }
+function bindEd(){
+  document.querySelectorAll('[data-edo]').forEach(b=>b.onclick=()=>{ const v=b.dataset.edo, kind=v[0], rest=v.slice(2);
+    if(kind==='b'){ const [c,id]=rest.split('__'), p=byId(c), k0=p&&p.base.find(k=>k.id===id); if(!k0) return; const m=baseEd(p,k0), t=tgt(p,m,null);
+      S.ed={key:v,kind,colab:c,id,nome:m.nome,tipo:m.tipo||'pct',dir:t.dir||'>=',t:t.t||''}; }
+    else { const [id,c]=rest.split('@'), x=S.extras.find(x=>x.id===id&&x.colab===c), p=byId(c); if(!x||!p) return;
+      S.ed={key:v,kind,colab:c,id,nome:x.nome,tipo:x.tipo,dir:x.dir||'>=',t:x.t||'',pai:x.pai||'',temSubs:S.extras.some(s=>s.colab===c&&s.pai===id),mains:p.kpis.filter(m=>!m.pai&&m.id!==id)}; }
+    S.xiOpen=null; renderPanel(); const f=$('#edNome'); if(f) f.focus(); });
+  const sv=$('#edSave'); if(!sv||!S.ed) return; const e=S.ed;
+  document.querySelectorAll('[data-ed]').forEach(f=>{ const k=f.dataset.ed; f.oninput=f.onchange=()=>{ e[k]=f.value; if(k==='tipo') renderPanel(); }; });
+  $('#edCancel').onclick=()=>{ S.ed=null; renderPanel(); };
+  sv.onclick=async()=>{
+    const err=$('#edErr'), nome=e.nome.trim(), p=byId(e.colab); err.textContent='';
+    if(!nome){ err.textContent='Dê um nome ao indicador.'; return; }
+    let t=(e.t||'').trim(); if(e.tipo==='check') t='';
+    if(t && isNaN(num(t))){ err.textContent='O target precisa ser um número, por exemplo 95%.'; return; }
+    if(t && !/%$/.test(t)) t+='%';
+    const pai=e.kind==='x'&&!e.temSubs?(e.pai||''):(e.kind==='x'?'':'');
+    if(p.kpis.some(k=>k.id!==e.id && k.nome.trim().toLowerCase()===nome.toLowerCase() && (k.pai||'')===pai)){ err.textContent='Já existe "'+nome+'" para '+p.nome+'.'; return; }
+    if(!S.db){ err.textContent='Sem conexão com o banco.'; return; }
+    sv.disabled=true;
+    try{
+      if(e.kind==='x'){
+        await saveExtras(S.extras.map(x=>x.id===e.id&&x.colab===e.colab?{...x,nome,tipo:e.tipo,t,dir:e.tipo==='pct'?e.dir:'>=',pai}:x));
+      } else {
+        const key=e.colab+'__'+e.id, k0=p.base.find(k=>k.id===e.id), ed={}, edits={...S.edits};
+        if(nome!==k0.nome) ed.nome=nome; if(e.tipo!==(k0.tipo||'pct')) ed.tipo=e.tipo;
+        if(Object.keys(ed).length) edits[key]=ed; else delete edits[key];
+        await saveExtras(S.extras,edits);
+        const cur=tgt(p,k0,null);
+        if(e.tipo==='pct' && (t!==(cur.t||'') || e.dir!==(cur.dir||'>='))){ const out={...S.targets,[key]:{t,dir:e.dir}}; await S.db.doc('config/targets').set(out); S.targets=out; }
+      }
+      S.ed=null; renderPanel(); toast('Indicador "'+nome+'" atualizado.');
+    }catch(x){ sv.disabled=false; err.textContent='Não foi possível salvar ('+(x&&x.code||'erro')+').'; }
+  };
+}
 S.extras=[]; S.ni={nome:'',tipo:'pct',dir:'>=',t:'',sel:{},pai:''}; S.xiOpen=null;
 function paiOpts(){ const sel=TEAM.filter(p=>S.ni.sel[p.id]), src=sel.length?sel:TEAM, out=[]; src.forEach(p=>p.kpis.forEach(k=>{ if(!k.pai && !out.includes(k.nome)) out.push(k.nome); })); return out.sort((a,b)=>a.localeCompare(b)); }
 function applyExtras(){
@@ -1328,12 +1385,12 @@ function applyExtras(){
   (S.equipe.novos||[]).forEach(n=>{ if(!n||!n.id||TEAM.some(p=>p.id===n.id)) return; PHOTOS[n.id]=photoURL(n); TEAM.push({id:n.id,nome:n.nome,turno:n.turno,atv:[],base:[],kpis:[],novo:true}); });
   if(S.view==='slide' && S.cur && !byId(S.cur)){ S.cur=null; go('inicio'); }
   const oc=S.equipe.ocultos||{};
-  TEAM.forEach(p=>{ const all=[...p.base.filter(k=>!oc[p.id+'__'+k.id]), ...S.extras.filter(x=>x.colab===p.id).map(x=>({id:x.id,nome:x.nome,tipo:x.tipo,t:x.t||'',dir:x.dir||'>=',extra:true,pai:x.pai||''}))];
+  TEAM.forEach(p=>{ const all=[...p.base.filter(k=>!oc[p.id+'__'+k.id]).map(k=>baseEd(p,k)), ...S.extras.filter(x=>x.colab===p.id).map(x=>({id:x.id,nome:x.nome,tipo:x.tipo,t:x.t||'',dir:x.dir||'>=',extra:true,pai:x.pai||''}))];
     // indicador secundário só aparece se o principal dele estiver na tela, e vem logo abaixo dele
     const mains=all.filter(k=>!k.pai); p.kpis=[];
     mains.forEach(m=>{ p.kpis.push(m); all.filter(s=>s.pai===m.id).forEach(s=>{ s.paiNome=m.nome; p.kpis.push(s); }); }); });
 }
-async function saveExtras(lista){ await S.db.doc('config/indicadores').set({lista}); S.extras=lista; applyExtras(); }
+async function saveExtras(lista,edits){ edits=edits||S.edits; await S.db.doc('config/indicadores').set({lista,editados:edits}); S.extras=lista; S.edits=edits; applyExtras(); }
 function indHTML(){
   const n=S.ni, nsel=Object.values(n.sel).filter(Boolean).length;
   const grupos=TEAM.map(p=>({p,xs:S.extras.filter(x=>x.colab===p.id)})).filter(g=>g.xs.length);
@@ -1375,10 +1432,9 @@ function indHTML(){
             ${x.pai?`<span class="tag">ligado a ${esc((g.p.kpis.find(k=>k.id===x.pai)||{}).nome||'indicador fora da tela')}</span>`:''}
             <span class="tag">${x.tipo==='check'?ic('check')+'Caixa de seleção':'<b>%</b> '+(x.t?(x.dir==='<='?'≤ ':'≥ ')+esc(x.t):'sem target')}</span>
             <span class="spacer"></span>
-            ${x.tipo==='pct'?`<button class="link" data-xe="${key}">Alterar %</button> · `:''}<button class="link danger" data-xd="${key}">Remover</button>
+            <button class="link" data-edo="x:${key}">Editar</button> · <button class="link danger" data-xd="${key}">Remover</button>
           </div>
-          ${S.xiOpen===key+'#e'?`<div class="inl xe"><select class="lg-in" data-xedir="${key}" style="width:auto"><option value=">=" ${x.dir!=='<='?'selected':''}>≥ maior é melhor</option><option value="<=" ${x.dir==='<='?'selected':''}>≤ menor é melhor</option></select>
-            <input class="lg-in" data-xet="${key}" maxlength="12" value="${esc(x.t)}" placeholder="Ex.: 95%" style="width:110px"><button class="btn primary" data-xes="${key}">Salvar</button><button class="btn" data-xc="1">Cancelar</button></div>`:''}
+          ${S.ed&&S.ed.key==='x:'+key?edForm():''}
           ${S.xiOpen===key+'#d'?`<div class="inl xe"><span class="pend">Remover "${esc(x.nome)}" de ${esc(g.p.nome)}? Os resultados já salvos ficam no banco, mas o indicador some das telas.</span><button class="btn" style="color:var(--bad)" data-xdc="${key}">Remover</button><button class="btn" data-xc="1">Cancelar</button></div>`:''}`;}).join('')}
         </div>`).join('')
       :'<p class="pend">Nenhum indicador novo ainda. Crie um ao lado.</p>'}
@@ -1386,6 +1442,7 @@ function indHTML(){
   </div>`;
 }
 function bindInd(){
+  bindEd();
   const add=$('#niAdd'); if(!add) return;
   const n=S.ni;
   $('#niNome').oninput=e=>n.nome=e.target.value;
@@ -1415,17 +1472,8 @@ function bindInd(){
     catch(e){ err.textContent='Não foi possível salvar ('+(e&&e.code||'erro')+').'; add.disabled=false; }
   };
   const find=key=>{ const [id,c]=key.split('@'); return S.extras.findIndex(x=>x.id===id&&x.colab===c); };
-  document.querySelectorAll('[data-xe]').forEach(b=>b.onclick=()=>{ S.xiOpen=b.dataset.xe+'#e'; renderPanel(); });
-  document.querySelectorAll('[data-xd]').forEach(b=>b.onclick=()=>{ S.xiOpen=b.dataset.xd+'#d'; renderPanel(); });
+  document.querySelectorAll('[data-xd]').forEach(b=>b.onclick=()=>{ S.xiOpen=b.dataset.xd+'#d'; S.ed=null; renderPanel(); });
   document.querySelectorAll('[data-xc]').forEach(b=>b.onclick=()=>{ S.xiOpen=null; renderPanel(); });
-  document.querySelectorAll('[data-xes]').forEach(b=>b.onclick=async()=>{
-    const key=b.dataset.xes, i=find(key); if(i<0) return;
-    let v=document.querySelector(`[data-xet="${key}"]`).value.trim(); const dir=document.querySelector(`[data-xedir="${key}"]`).value;
-    if(v && isNaN(num(v))){ toast('O target precisa ser um número, por exemplo 95%.'); return; }
-    if(v && !/%$/.test(v)) v+='%';
-    const lista=S.extras.map((x,j)=>j===i?{...x,t:v,dir}:x);
-    try{ await saveExtras(lista); S.xiOpen=null; renderPanel(); toast('Target atualizado.'); }catch(e){ toast('Não foi possível salvar.'); }
-  });
   document.querySelectorAll('[data-xdc]').forEach(b=>b.onclick=async()=>{
     const i=find(b.dataset.xdc); if(i<0) return;
     const alvo=S.extras[i];
@@ -1552,7 +1600,7 @@ function hideBanner(){ $('#banner').classList.add('hidden'); }
     if(!db){ $('#conn').classList.remove('live'); $('#conn').textContent='Offline'; showBanner(window.__HOSTED__&&!window.__HOSTED__.configured ? 'O banco de dados ainda não foi configurado: falta colar o firebaseConfig no topo do arquivo.' : 'Não foi possível conectar ao banco de dados. Verifique a internet e recarregue a página.'); render(); return; }
     db.collection('acessos').onSnapshot(s=>{ S.users=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')); S.usersLoaded=true; restoreAuth(); softRender(); }, ()=>{ S.usersLoaded=true; softRender(); });
     db.doc('config/equipe').onSnapshot(s=>{ const d=s.exists?(s.data()||{}):{}; S.equipe={novos:Array.isArray(d.novos)?d.novos:[],ocultos:(d.ocultos&&typeof d.ocultos==='object')?d.ocultos:{},removidos:(d.removidos&&typeof d.removidos==='object')?d.removidos:{}}; applyExtras(); softRender(); }, ()=>{});
-    db.doc('config/indicadores').onSnapshot(s=>{ S.extras=(s.exists&&Array.isArray((s.data()||{}).lista))?s.data().lista:[]; applyExtras(); softRender(); }, ()=>{});
+    db.doc('config/indicadores').onSnapshot(s=>{ const d=s.exists?(s.data()||{}):{}; S.extras=Array.isArray(d.lista)?d.lista:[]; S.edits=(d.editados&&typeof d.editados==='object')?d.editados:{}; applyExtras(); softRender(); }, ()=>{});
     S.unsubT = db.doc('config/targets').onSnapshot(s=>{ S.targets = s.exists ? (s.data()||{}) : {}; softRender(); }, ()=>{});
     subscribe(); render();
   }catch(e){ $('#conn').classList.remove('live'); $('#conn').textContent='Offline'; render(); }
